@@ -1,6 +1,5 @@
 import type { Handler } from "@netlify/functions";
 import serverless from "serverless-http";
-import app from "../../artifacts/api-server/src/app";
 import {
   cancelSubscription,
   changePlan,
@@ -12,7 +11,16 @@ import {
 } from "./_stripe";
 import { authenticate } from "./_supabase";
 
-const applicationHandler = serverless(app);
+let applicationHandler: ReturnType<typeof serverless> | undefined;
+
+async function getApplicationHandler() {
+  if (!applicationHandler) {
+    process.env.NODE_ENV = "production";
+    const { default: app } = await import("../../artifacts/api-server/src/app");
+    applicationHandler = serverless(app);
+  }
+  return applicationHandler;
+}
 
 export const handler: Handler = async (event) => {
   const path = event.path.replace(/^\/.netlify\/functions\/api/, "");
@@ -50,5 +58,6 @@ export const handler: Handler = async (event) => {
     path: `/api${path}`,
     rawUrl: event.rawUrl.replace(event.path, `/api${path}`),
   };
-  return applicationHandler(forwardedEvent as never, {} as never) as ReturnType<Handler>;
+  const handler = await getApplicationHandler();
+  return handler(forwardedEvent as never, {} as never) as ReturnType<Handler>;
 };
