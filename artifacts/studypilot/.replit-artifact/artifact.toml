@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "StudyPilot"
+description = "Eine moderne Lernplattform für Studierende, die aus Unterlagen tägliche Lernpläne, Karteikarten, Quizze und Prüfungsvorbereitung macht. Mit Demo-Modus und Netlify-kompatibler Struktur."
+version = "1.0.0"
+id = "artifacts/studypilot"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 20782
+
+[services.development]
+run = "pnpm --filter @workspace/studypilot run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/studypilot", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/studypilot/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "20782"
+BASE_PATH = "/"

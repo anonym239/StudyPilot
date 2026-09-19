@@ -1,0 +1,304 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: API specification
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: dashboard
+    description: Study overview operations
+  - name: courses
+    description: Course operations
+  - name: study
+    description: Study activity operations
+  - name: documents
+    description: PDF documents and generated learning content
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /dashboard:
+    get:
+      operationId: getDashboard
+      tags: [dashboard]
+      summary: Get dashboard overview
+      responses:
+        "200":
+          description: Dashboard overview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Dashboard"
+  /courses:
+    get:
+      operationId: listCourses
+      tags: [courses]
+      summary: List courses
+      responses:
+        "200":
+          description: Courses
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Course"
+    post:
+      operationId: createCourse
+      tags: [courses]
+      summary: Create a course
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CourseInput"
+      responses:
+        "201":
+          description: Created course
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Course"
+  /courses/{courseId}:
+    get:
+      operationId: getCourse
+      tags: [courses]
+      summary: Get a course
+      parameters:
+        - $ref: "#/components/parameters/CourseId"
+      responses:
+        "200":
+          description: Course
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Course"
+        "404":
+          description: Course not found
+    delete:
+      operationId: deleteCourse
+      tags: [courses]
+      summary: Delete a course
+      parameters:
+        - $ref: "#/components/parameters/CourseId"
+      responses:
+        "204":
+          description: Course deleted
+  /courses/{courseId}/documents:
+    get:
+      operationId: listDocuments
+      tags: [documents]
+      parameters: [{ $ref: "#/components/parameters/CourseId" }]
+      responses:
+        "200":
+          description: Course documents
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/Document" } }
+    post:
+      operationId: uploadDocument
+      tags: [documents]
+      description: Upload exactly one PDF as multipart/form-data in the `file` field (maximum 10 MB).
+      parameters: [{ $ref: "#/components/parameters/CourseId" }]
+      responses:
+        "201":
+          description: Processed document
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Document" }
+  /documents/{documentId}/learning:
+    get:
+      operationId: getDocumentLearning
+      tags: [documents]
+      parameters:
+        - name: documentId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Generated learning content
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LearningContent" }
+  /courses/{courseId}/learning-content:
+    get:
+      operationId: getCourseLearningContent
+      tags: [documents]
+      parameters: [{ $ref: "#/components/parameters/CourseId" }]
+      responses:
+        "200":
+          description: Generated learning content for a course
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LearningContent" }
+  /study-plan:
+    get:
+      operationId: getStudyPlan
+      tags: [study]
+      responses:
+        "200":
+          description: Current user's generated study plan
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/StudyPlanItem" }
+  /study/sessions:
+    post:
+      operationId: completeStudySession
+      tags: [study]
+      summary: Complete a study session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StudySessionInput"
+      responses:
+        "201":
+          description: Completed session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudySession"
+components:
+  parameters:
+    CourseId:
+      name: courseId
+      in: path
+      required: true
+      schema:
+        type: string
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+    Dashboard:
+      type: object
+      required: [user, todayMinutes, weeklyMinutes, streak, completedTasks, tasks, exams]
+      properties:
+        user:
+          type: object
+          required: [name, initials]
+          properties:
+            name: { type: string }
+            initials: { type: string }
+        todayMinutes: { type: integer }
+        weeklyMinutes: { type: integer }
+        streak: { type: integer }
+        completedTasks: { type: integer }
+        tasks:
+          type: array
+          items:
+            $ref: "#/components/schemas/StudyTask"
+        exams:
+          type: array
+          items:
+            $ref: "#/components/schemas/Exam"
+    StudyTask:
+      type: object
+      required: [id, title, subject, duration, progress, type]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        subject: { type: string }
+        duration: { type: integer }
+        progress: { type: integer }
+        type: { type: string }
+        completed: { type: boolean }
+    Exam:
+      type: object
+      required: [id, name, course, daysLeft, progress]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        course: { type: string }
+        daysLeft: { type: integer }
+        progress: { type: integer }
+        date: { type: string }
+    Course:
+      type: object
+      required: [id, name, description, documents, progress, difficultTopics, color]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        description: { type: string }
+        examDate: { type: ["string", "null"] }
+        documents: { type: integer }
+        progress: { type: integer }
+        difficultTopics: { type: integer }
+        color: { type: string }
+    CourseInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1 }
+        description: { type: string }
+        examDate: { type: ["string", "null"] }
+    StudySessionInput:
+      type: object
+      required: [courseId, duration]
+      properties:
+        courseId: { type: string }
+        duration: { type: integer, minimum: 1 }
+    StudySession:
+      type: object
+      required: [id, courseId, duration, completedAt]
+      properties:
+        id: { type: string }
+        courseId: { type: string }
+        duration: { type: integer }
+        completedAt: { type: string }
+    Document:
+      type: object
+      required: [id, name, mime_type, size_bytes, status]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        mime_type: { type: string }
+        size_bytes: { type: integer }
+        status: { type: string }
+        created_at: { type: string, format: date-time }
+    LearningContent:
+      type: object
+      required: [summary, flashcards, quiz, plan]
+      properties:
+        summary:
+          type: [object, "null"]
+          additionalProperties: true
+        flashcards: { type: array, items: { type: object } }
+        quiz: { type: array, items: { type: object } }
+        plan: { type: array, items: { type: object } }
+    StudyPlanItem:
+      type: object
+      required: [id, title, duration, completed, courseId]
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        type: { type: string }
+        duration: { type: integer }
+        completed: { type: boolean }
+        courseId: { type: string, format: uuid }
+        scheduledFor: { type: string, format: date }
+

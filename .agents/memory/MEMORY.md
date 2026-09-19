@@ -1,0 +1,1 @@
+- [Supabase connector schema changes](supabase-connector-schema.md) — the connector exposes PostgREST but cannot apply DDL; schema work needs an explicit migration path.
